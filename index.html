@@ -1,0 +1,2258 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TRA CELL</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  
+  <!-- Mammoth for Word processing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+  
+  <!-- SheetJS for Excel processing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    html, body { height:100%; margin:0; padding:0; font-family: Arial, sans-serif; }
+    #map { height:100vh; width:100%; }
+
+#togglePanel {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background: linear-gradient(135deg, #2196F3, #21CBF3);
+  color: white;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  z-index: 1001;
+}
+
+    /* Dark Mode Toggle */
+    #darkModeToggle {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: #333;
+      color: white;
+      border: none;
+      padding: 8px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 18px;
+      z-index: 1001;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+    #darkModeToggle:hover {
+      background: #555;
+    }
+
+    /* Dark mode styles */
+    body.dark-mode {
+      background: #1a1a1a;
+      color: #e0e0e0;
+    }
+    
+    body.dark-mode #map {
+      filter: brightness(0.8) contrast(1.2);
+    }
+    
+    body.dark-mode #controlPanel {
+      background: rgba(30, 30, 30, 0.97);
+      color: #e0e0e0;
+    }
+    
+    body.dark-mode #modeSelector {
+      background: rgba(40, 40, 40, 0.95);
+    }
+    
+    body.dark-mode .mode-option {
+      background: #333;
+      color: #2196F3;
+      border-color: #2196F3;
+    }
+    
+    body.dark-mode .mode-option:hover {
+      background: #2196F3;
+      color: white;
+    }
+    
+    body.dark-mode textarea,
+    body.dark-mode input {
+      background: #333;
+      color: #e0e0e0;
+      border-color: #555;
+    }
+    
+    body.dark-mode #results {
+      background: #2a2a2a;
+      border-color: #555;
+      color: #e0e0e0;
+    }
+    
+    body.dark-mode .result-item {
+      border-bottom-color: #444;
+    }
+    
+    body.dark-mode .result-text {
+      color: #f0f0f0;
+    }
+    
+    body.dark-mode .duplicate-section {
+      background: #2a2a2a;
+      border-color: #555;
+    }
+    
+    body.dark-mode .duplicate-list {
+      background: #333;
+      border-color: #555;
+      color: #e0e0e0;
+    }
+    
+    body.dark-mode .import-status.success {
+      background: #1b3e1b;
+      color: #81c784;
+      border-color: #4caf50;
+    }
+    
+    body.dark-mode .import-status.error {
+      background: #3e1b1b;
+      color: #e57373;
+      border-color: #f44336;
+    }
+    
+    body.dark-mode .import-status.warning {
+      background: #3e2e1b;
+      color: #ffb74d;
+      border-color: #ff9800;
+    }
+    
+    body.dark-mode .file-format-info {
+      background: #1e2a3e;
+      border-color: #2196f3;
+      color: #64b5f6;
+    }
+    
+    body.dark-mode .format-info {
+      background: #1e2a3e;
+      border-color: #2196f3;
+      color: #64b5f6;
+    }
+
+    body.dark-mode #darkModeToggle {
+      background: #ffa726;
+      color: #333;
+    }
+    body.dark-mode #darkModeToggle:hover {
+      background: #ff9800;
+    }
+
+    body.dark-mode .conversion-info {
+      background: #1e2a1e;
+      border-color: #4caf50;
+      color: #81c784;
+    }
+
+    /* Menu chọn chức năng - hiện kế bên nút */
+    #modeSelector {
+      position: absolute;
+      top: 15px;
+      left: 107px;
+      background: rgba(255,255,255,0.95);
+      box-shadow: 2px 2px 12px rgba(0,0,0,0.3);
+      border-radius: 5px;
+      padding: 5px;
+      display: none;
+      z-index: 1002;
+      flex-direction: row;
+      gap: 5px;
+    }
+    #modeSelector.open { 
+      display: flex; 
+    }
+
+    .mode-option {
+      padding: 7px 11px;
+      border: 2px solid #2196F3;
+      background: white;
+      color: #2196F3;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: bold;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+    }
+    .mode-option:hover {
+      background: #2196F3;
+      color: white;
+    }
+
+#controlPanel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 65vh;
+  background: #ffffff;
+  box-shadow: 0 -6px 20px rgba(0,0,0,0.25);
+  padding: 15px;
+  overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform 0.35s ease;
+  z-index: 1000;
+  border-top-left-radius: 25px;
+  border-top-right-radius: 25px;
+}
+
+#controlPanel.open {
+  transform: translateY(0);
+}
+
+#controlPanel.open {
+  transform: translateY(0);
+}
+    #controlPanel h2 { margin:0 0 10px; font-size:18px; text-align:center; }
+
+    /* Nút quay lại */
+    .back-button {
+      background: #2196F3;
+      color: white;
+      border: none;
+      padding: 6px 9px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+
+    button.action {
+  padding:10px;
+  border:none;
+  border-radius:10px;
+  font-size:14px;
+  font-weight:bold;
+  cursor:pointer;
+}
+    
+    .save { background:#4CAF50; color:white; }
+    .delete { background:#e53935; color:white; }
+    .search { background:#2196F3; color:white; }
+    .export { background:#e91e63; color:white; }
+    .import { background:#FF9800; color:white; font-size:18px; }
+
+    /* Hàng nút ngang */
+    .button-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;   /* tạo khoảng cách với 3 nút dưới */
+}
+    .button-row button {
+  flex: 1;
+  height: 42px;
+  font-size: 13px;
+  background: #2196F3;   /* cùng màu 3 nút dưới */
+  color: white;
+  border: none;
+  border-radius: 8px;
+}
+
+    .checkbox-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; }
+    .checkbox-row label { font-size:13px; cursor:pointer; user-select:none; display:flex; align-items:center; gap:6px; }
+
+    #results { margin-top:10px; font-size:13px; white-space:pre-wrap; max-height:320px; overflow-y:auto; border:1px solid #e0e0e0; padding:6px; border-radius:6px; background:#fafafa; }
+
+   .result-item {
+  background: #fff;
+  border-radius: 16px;
+  padding: 12px;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  animation: fadeIn 0.3s ease;
+cursor: pointer;
+transition: all 0.2s ease;
+}
+.result-item:hover {
+  transform: scale(1.02);
+  background: #f5faff;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px);}
+  to { opacity: 1; transform: translateY(0);}
+}
+    .result-text { flex:1; font-size:13px; line-height:1.3; color:#222; }
+    .result-actions { margin-left:8px; display:flex; align-items:center; gap:6px; }
+
+    .g-button {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:30px; height:30px; border-radius:4px; background:#4285F4; color:white; font-weight:bold; text-decoration:none;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    }
+
+    .custom-icon {
+      background:#4CAF50; color:white; font-weight:bold; border-radius:50%;
+      width:28px; height:28px; display:flex; align-items:center; justify-content:center; border:2px solid white;
+    }
+
+    #apiStatus { font-size:12px; font-style:italic; color:green; margin-top:5px; }
+    
+    .import-status {
+      font-size:12px;
+      margin-top:8px;
+      padding:6px;
+      border-radius:4px;
+      display:none;
+    }
+    .import-status.success {
+      background:#e8f5e8;
+      color:#2e7d2e;
+      border:1px solid #4CAF50;
+    }
+    .import-status.error {
+      background:#ffebee;
+      color:#c62828;
+      border:1px solid #f44336;
+    }
+    .import-status.warning {
+      background:#fff3e0;
+      color:#e65100;
+      border:1px solid #ff9800;
+    }
+
+    .conversion-info {
+      background:#e8f5e8;
+      border:1px solid #4caf50;
+      padding:6px;
+      border-radius:4px;
+      margin-top:6px;
+      font-size:11px;
+      color:#2e7d2e;
+      display:none;
+    }
+
+    .file-format-info {
+      font-size:11px;
+      color:#666;
+      margin-top:4px;
+      font-style:italic;
+    }
+
+    .duplicate-section {
+      margin-top:10px;
+      padding:8px;
+      border:1px solid #e0e0e0;
+      border-radius:6px;
+      background:#f9f9f9;
+      display:none;
+    }
+    .duplicate-section.show {
+      display:block;
+    }
+    .duplicate-title {
+      font-weight:bold;
+      font-size:13px;
+      color:#d32f2f;
+      margin-bottom:6px;
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+    .duplicate-list {
+      max-height:120px;
+      overflow-y:auto;
+      font-size:12px;
+      color:#555;
+      background:white;
+      padding:6px;
+      border-radius:4px;
+      border:1px solid #ddd;
+    }
+    .duplicate-item {
+      padding:2px 0;
+      border-bottom:1px dotted #eee;
+    }
+    .duplicate-item:last-child {
+      border-bottom:none;
+    }
+    .duplicate-count {
+      background:#f44336;
+      color:white;
+      padding:2px 6px;
+      border-radius:10px;
+      font-size:11px;
+      font-weight:bold;
+    }
+    .filter-actions {
+      margin-top:8px;
+      display:flex;
+      gap:8px;
+    }
+    .filter-btn {
+      padding:6px 10px;
+      font-size:12px;
+      border:none;
+      border-radius:4px;
+      cursor:pointer;
+      font-weight:bold;
+    }
+    .remove-dup {
+      background:#ff5722;
+      color:white;
+    }
+    .keep-dup {
+      background:#2196f3;
+      color:white;
+    }
+
+    .format-info {
+      background:#e3f2fd;
+      border:1px solid #2196f3;
+      padding:8px;
+      border-radius:6px;
+      margin-top:8px;
+      font-size:11px;
+      color:#1976d2;
+    }
+/* ===== NÚT 3D MƯỢT – KHÔNG ĐỔI MÀU ===== */
+
+button {
+  position: relative;
+  border-radius: 12px;
+  transition: all 0.15s ease;
+  box-shadow:
+    0 4px 0 rgba(0,0,0,0.3),
+    0 6px 12px rgba(0,0,0,0.2);
+}
+
+/* Hover nổi nhẹ */
+button:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 6px 0 rgba(0,0,0,0.3),
+    0 10px 16px rgba(0,0,0,0.25);
+}
+
+/* Nhấn xuống */
+button:active {
+  transform: translateY(3px);
+  box-shadow:
+    0 1px 0 rgba(0,0,0,0.3),
+    0 3px 6px rgba(0,0,0,0.2);
+}
+  
+.location-buttons button {
+  flex: 1;
+  height: 42px;
+  font-size: 13px;
+  background: #2196F3;       /* xanh dương */
+  color: white;
+  border: none;
+  border-radius: 8px;
+}
+ .top-buttons {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.top-buttons button {
+  flex: 1;
+  height: 42px;
+  font-size: 13px;
+}
+ /* ===== TAB TRA CELL SCROLL ===== */
+#tabTraCell {
+  max-height: 40vh;        /* chiều cao vùng nút */
+  overflow-y: auto;        /* bật cuộn dọc */
+  padding-right: 5px;
+}
+
+/* Thanh cuộn đẹp hơn */
+#tabTraCell::-webkit-scrollbar {
+  width: 6px;
+}
+
+#tabTraCell::-webkit-scrollbar-thumb {
+  background: #2196F3;
+  border-radius: 10px;
+}
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <button id="togglePanel">TRA CELL</button>
+  
+  <!-- Dark Mode Toggle -->
+  <button id="darkModeToggle" onclick="toggleDarkMode()">🌙</button>
+  <---hien thi api dang dung---
+  <div id="apiIndicator" style="
+  position:absolute;
+  top:65px;
+  right:15px;
+  font-size:12px;
+  font-style:italic;
+  color:#e91e63;
+  z-index:1001;
+">
+</div>
+  
+  <div id="controlPanel">
+    <div style="
+  width:50px;
+  height:5px;
+  background:#ccc;
+  border-radius:10px;
+  margin:0 auto 10px;
+"></div>
+    <button class="back-button" onclick="goBack()">← Quay lại</button>
+    <h2 id="panelTitle" style="text-align:center; font-size:20px;">
+  📡 Tra cứu Cell
+</h2>
+
+    <label>Nhập Cell (hỗ trợ nhiều định dạng):</label>
+   <textarea id="cellInput" rows="2" placeholder=""></textarea>
+    
+    <div id="conversionInfo" class="conversion-info"></div>
+
+    <div class="checkbox-row" id="techRow">
+      <label><input type="checkbox" id="umts">UMTS</label>
+      <label><input type="checkbox" id="lte">LTE</label>
+      <label><input type="checkbox" id="nbiot">NBIOT</label>
+      <label><input type="checkbox" id="nr">NR</label>
+      <label><input type="checkbox" id="auto" checked>Tự động</label>
+      <!-- ===== TAB XEM VỊ TRÍ ===== -->
+<div style="margin-top:15px; border-top:1px solid #ddd; padding-top:10px;">
+  <h4 style="margin:6px 0;">Xem vị trí</h4>
+
+  <input type="text" id="latInput" placeholder="Nhập vĩ độ (Lat)"
+    style="width:100%; margin-bottom:8px; padding:8px; border-radius:8px; border:1px solid #ccc;">
+
+  <input type="text" id="lngInput" placeholder="Nhập kinh độ (Long)"
+    style="width:100%; margin-bottom:10px; padding:8px; border-radius:8px; border:1px solid #ccc;">
+
+  <!-- Hàng nút chức năng -->
+<div style="margin-top:10px;">
+  <div id="tabTraCell">
+  <h4>🔍 Tra cứu</h4>
+  <div class="button-row">
+    <button onclick="searchCells()">Tra cell</button>
+    <button onclick="clearResults()">Xóa</button>
+  </div>
+  <h4>📁 Dữ liệu</h4>
+  <div class="button-row">
+    <button onclick="exportExcel()">Xuất</button>
+    <button onclick="importFile()">Import</button>
+  </div>
+  <h4>📍 Bản đồ</h4>
+  <div class="button-row">
+    <button onclick="openLocation()">Xem vị trí</button>
+    <button onclick="lookupAndLocation()">Tra + Vị trí</button>
+  </div>
+  <div class="button-row">
+    <button onclick="openBothOnGoogle()">Google 2 điểm</button>
+  </div>
+  <h4>🕓 Lịch sử</h4>
+  <div class="button-row">
+    <button onclick="showHistory()">Lịch sử</button>
+    <button onclick="clearHistory()">Xóa lịch sử</button>
+      </div>
+      <input type="file" id="fileInput" accept=".txt,.docx,.doc,.xlsx,.xls,.csv" style="display:none;" multiple>
+    </div>
+    
+    <div id="fileFormatInfo" class="file-format-info">
+      
+    <div id="importStatus" class="import-status"></div>
+
+    <!-- Duplicate Detection Section -->
+    <div id="duplicateSection" class="duplicate-section">
+      <div class="duplicate-title">
+        ⚠️ Cell trùng lặp <span id="duplicateCount" class="duplicate-count">0</span>
+      </div>
+      <div id="duplicateList" class="duplicate-list"></div>
+      <div class="filter-actions">
+        <button class="filter-btn remove-dup" onclick="removeDuplicates()">🗑️ Xóa trùng</button>
+        <button class="filter-btn keep-dup" onclick="keepDuplicates()">📋 Giữ trùng</button>
+        <button class="filter-btn" onclick="hideDuplicateSection()" style="background:#666;color:white;">✖️ Ẩn</button>
+      </div>
+    </div>
+
+    <div id="results"></div>
+  </div>
+
+  <script>
+    let lastCellLat = null;
+    let lastCellLng = null;
+    let map, markersLayer, resultData = [];
+  let sttCounter = 1;
+let historyData = JSON.parse(localStorage.getItem("cellHistory")) || [];
+    let currentMode = ''; // 'analyze' hoặc 'lookup'
+    // ===== DANH SÁCH API CỐ ĐỊNH =====
+const apiList = [
+  "pk.f600f73cd46c6b815e81a9149f4892f9",
+  "pk.972c8f8f5dd34478fb3288ba5e7e5444",
+  "pk.fd55f3c3dbbc3db5496c0e453f5ec19f",
+  "pk.b85bba40387accd1d9b05b5ba4602f97",
+  "pk.a0e2e706b9c470a10c4b52a0340c41d3",
+  "pk.420df538523e3570595ed290ae565666",
+  "pk.459729384287fc3658cc0be78ce0e90a",
+  "pk.7d39dad5183bce54f6914f39ad28be05",
+  "pk.ecc20abbd61013290649761fecb737a4",
+  "pk.1f842cdce082f2d7b3de42361bcff5fa",
+  "pk.206573dd34cef40971310df9e7c12970",
+  "pk.1240f527b89f8581901e8cca09c70aff",
+  "pk.1b37a20980428aa669f31f45628c5810",
+  "pk.df1191ad77ee3db559a5930ea468e25b",
+  "pk.302508ac0d02da617362fbff3ee6c736"
+];
+let currentApiIndex = 0;
+function getCurrentApi() {
+  const displayIndex = currentApiIndex + 1;
+  document.getElementById("apiIndicator").textContent = `API: ${displayIndex}`;
+  return apiList[currentApiIndex];
+}
+
+function switchToNextApi() {
+  currentApiIndex++;
+  if (currentApiIndex >= apiList.length) {
+    currentApiIndex = 0;
+  }
+
+  const displayIndex = currentApiIndex + 1;
+  document.getElementById("apiIndicator").textContent = `API: ${displayIndex}`;
+}
+    const resultsDiv = document.getElementById("results");
+    const fileInput = document.getElementById("fileInput");
+    const cellInput = document.getElementById("cellInput");
+    const importStatus = document.getElementById("importStatus");
+    const duplicateSection = document.getElementById("duplicateSection");
+    const duplicateList = document.getElementById("duplicateList");
+    const duplicateCount = document.getElementById("duplicateCount");
+    const modeSelector = document.getElementById("modeSelector");
+    const controlPanel = document.getElementById("controlPanel");
+    const panelTitle = document.getElementById("panelTitle");
+    const fileFormatInfo = document.getElementById("fileFormatInfo");
+    const conversionInfo = document.getElementById("conversionInfo");
+
+    // Enhanced cell conversion function
+    function convertCellId(cellIdStr) {
+      // Only convert if cell ID starts with '0'
+      if (!cellIdStr.startsWith('0')) {
+        return { converted: false, newCellId: cellIdStr };
+      }
+      
+      const cellId = parseInt(cellIdStr);
+      if (isNaN(cellId)) return { converted: false, newCellId: cellIdStr };
+      
+      // Method 1: Split by 100000 (Result 1 from secondary code)
+      const dec1 = Math.floor(cellId / 100000);
+      const dec2 = cellId % 100000;
+      const hex1 = dec1.toString(16).toUpperCase();
+      const hex2 = dec2.toString(16).toUpperCase();
+      const mergedHex = hex1 + hex2;
+      const newCellId = parseInt(mergedHex, 16);
+      
+      return {
+        converted: true,
+        newCellId: newCellId.toString(),
+        originalCellId: cellIdStr,
+        method: 'Kết quả 1: Chia 100000 -> Hex -> Dec'
+      };
+    }
+
+    // Smart cell parsing function that handles both full and short formats
+    function parseSmartCellFormat(cellInput, defaultMcc = "452") {
+      const input = cellInput.trim();
+      
+      // Check if it's a continuous format (all digits, no dots)
+      if (/^\d+$/.test(input)) {
+        // Try enhanced continuous parsing first
+        const enhancedResult = parseEnhancedContinuous(input);
+        if (enhancedResult.success) {
+          return enhancedResult;
+        }
+        
+        // Fallback to original continuous parsing
+        if (input.length >= 10) {
+          return parseContinuousCellFixed(input);
+        }
+      }
+      
+      // Check if it contains dots (formatted input)
+      if (input.includes('.')) {
+        const parts = input.split('.');
+        
+        if (parts.length === 4) {
+          // Full format: mcc.mnc.lac.cellid
+          let [mcc, mnc, lac, cid] = parts;
+          
+          // Validate MCC (should be 3 digits, between 200-999)
+          if (!/^\d{3}$/.test(mcc) || parseInt(mcc) < 200 || parseInt(mcc) > 999) {
+            return {
+              success: false,
+              reason: `MCC không hợp lệ: ${mcc} (phải là 3 chữ số từ 200-999)`
+            };
+          }
+          
+          // Check if cell ID needs conversion (starts with '0')
+          let conversionApplied = false;
+          let originalCellId = cid;
+          
+          if (cid.startsWith('0')) {
+            const conversionResult = convertCellId(cid);
+            if (conversionResult.converted) {
+              cid = conversionResult.newCellId;
+              conversionApplied = true;
+            }
+          }
+          
+          // Clean leading zeros
+          const cleanMnc = mnc.replace(/^0+/, '') || mnc.slice(-1);
+          const cleanLac = lac.replace(/^0+/, '') || lac.slice(-1);
+          const cleanCid = cid.replace(/^0+/, '') || cid.slice(-1);
+          
+          return {
+            success: true,
+            cellId: `${cleanMnc}.${cleanLac}.${cleanCid}`,
+            parsed: {
+              mcc: mcc,
+              mnc: cleanMnc,
+              lac: cleanLac,
+              cellid: cleanCid
+            },
+            format: 'full',
+            originalFormat: input,
+            conversionApplied: conversionApplied,
+            originalCellId: conversionApplied ? originalCellId : null
+          };
+          
+        } else if (parts.length === 3) {
+          // Short format: mnc.lac.cellid (automatically add default MCC)
+          let [mnc, lac, cid] = parts;
+          
+          // Check if cell ID needs conversion (starts with '0')
+          let conversionApplied = false;
+          let originalCellId = cid;
+          
+          if (cid.startsWith('0')) {
+            const conversionResult = convertCellId(cid);
+            if (conversionResult.converted) {
+              cid = conversionResult.newCellId;
+              conversionApplied = true;
+            }
+          }
+          
+          // Clean leading zeros
+          const cleanMnc = mnc.replace(/^0+/, '') || mnc.slice(-1);
+          const cleanLac = lac.replace(/^0+/, '') || lac.slice(-1);
+          const cleanCid = cid.replace(/^0+/, '') || cid.slice(-1);
+          
+          return {
+            success: true,
+            cellId: `${cleanMnc}.${cleanLac}.${cleanCid}`,
+            parsed: {
+              mcc: defaultMcc,
+              mnc: cleanMnc,
+              lac: cleanLac,
+              cellid: cleanCid
+            },
+            format: 'short',
+            originalFormat: input,
+            conversionApplied: conversionApplied,
+            originalCellId: conversionApplied ? originalCellId : null
+          };
+          
+        } else {
+          return {
+            success: false,
+            reason: `Định dạng cell không hợp lệ: ${input} (cần 3 hoặc 4 phần tách bởi dấu chấm)`
+          };
+        }
+      }
+      
+      return {
+        success: false,
+        reason: `Không thể nhận dạng định dạng cell: ${input}`
+      };
+    }
+
+    // Enhanced continuous cell parsing - NEW FUNCTION
+    function parseEnhancedContinuous(cellString) {
+      const validMncs = ['01', '02', '04', '05', '07', '09'];
+      const defaultMcc = '452';
+      
+      // Case 1: No MCC - format: MNC(2) + LAC(5) + CellID(remaining)
+      if (cellString.length >= 8) { // At least MNC(2) + LAC(5) + CellID(1)
+        const potentialMnc = cellString.substring(0, 2);
+        
+        if (validMncs.includes(potentialMnc)) {
+          const mnc = potentialMnc;
+          const lac = cellString.substring(2, 7);
+          const cellid = cellString.substring(7);
+          
+          if (cellid.length === 0) {
+            return {
+              success: false,
+              reason: "Không đủ ký tự cho CellID"
+            };
+          }
+          
+          if (cellid.length > 15) {
+            return {
+              success: false,
+              reason: `CellID quá dài (${cellid.length} ký tự, tối đa 15)`
+            };
+          }
+          
+          // Check if cell ID needs conversion (starts with '0')
+          let finalCellId = cellid;
+          let conversionApplied = false;
+          
+          if (cellid.startsWith('0')) {
+            const conversionResult = convertCellId(cellid);
+            if (conversionResult.converted) {
+              finalCellId = conversionResult.newCellId;
+              conversionApplied = true;
+            }
+          }
+          
+          // Clean leading zeros
+          const cleanMnc = mnc.replace(/^0+/, '') || mnc.slice(-1);
+          const cleanLac = lac.replace(/^0+/, '') || lac.slice(-1);
+          const cleanCellId = finalCellId.replace(/^0+/, '') || finalCellId.slice(-1);
+          
+          return {
+            success: true,
+            cellId: `${cleanMnc}.${cleanLac}.${cleanCellId}`,
+            originalFormat: cellString,
+            parsed: {
+              mcc: defaultMcc,
+              mnc: cleanMnc,
+              lac: cleanLac,
+              cellid: finalCellId
+            },
+            format: 'continuous_no_mcc',
+            conversionApplied: conversionApplied,
+            originalCellId: conversionApplied ? cellid : null,
+            method: `Định dạng liền không MCC: MNC(2) + LAC(5) + CellID - MCC mặc định ${defaultMcc}`
+          };
+        }
+      }
+      
+      // Case 2: Has MCC - format: MCC(3) + MNC(2) + LAC(5) + CellID(remaining)  
+      if (cellString.length >= 11) { // At least MCC(3) + MNC(2) + LAC(5) + CellID(1)
+        const potentialMcc = cellString.substring(0, 3);
+        const potentialMnc = cellString.substring(3, 5);
+        
+        const mccNum = parseInt(potentialMcc);
+        if (mccNum >= 200 && mccNum <= 999 && validMncs.includes(potentialMnc)) {
+          const mcc = potentialMcc;
+          const mnc = potentialMnc;
+          const lac = cellString.substring(5, 10);
+          const cellid = cellString.substring(10);
+          
+          if (cellid.length === 0) {
+            return {
+              success: false,
+              reason: "Không đủ ký tự cho CellID"
+            };
+          }
+          
+          if (cellid.length > 15) {
+            return {
+              success: false,
+              reason: `CellID quá dài (${cellid.length} ký tự, tối đa 15)`
+            };
+          }
+          
+          // Check if cell ID needs conversion (starts with '0')
+          let finalCellId = cellid;
+          let conversionApplied = false;
+          
+          if (cellid.startsWith('0')) {
+            const conversionResult = convertCellId(cellid);
+            if (conversionResult.converted) {
+              finalCellId = conversionResult.newCellId;
+              conversionApplied = true;
+            }
+          }
+          
+          // Clean leading zeros
+          const cleanMnc = mnc.replace(/^0+/, '') || mnc.slice(-1);
+          const cleanLac = lac.replace(/^0+/, '') || lac.slice(-1);
+          const cleanCellId = finalCellId.replace(/^0+/, '') || finalCellId.slice(-1);
+          
+          return {
+            success: true,
+            cellId: `${cleanMnc}.${cleanLac}.${cleanCellId}`,
+            originalFormat: cellString,
+            parsed: {
+              mcc: mcc,
+              mnc: cleanMnc,
+              lac: cleanLac,
+              cellid: finalCellId
+            },
+            format: 'continuous_with_mcc',
+            conversionApplied: conversionApplied,
+            originalCellId: conversionApplied ? cellid : null,
+            method: "Định dạng liền có MCC: MCC(3) + MNC(2) + LAC(5) + CellID"
+          };
+        }
+      }
+      
+      return {
+        success: false,
+        reason: `Không thể phân tích định dạng liền: ${cellString} (MNC phải là 01,02,04,05,07,09)`
+      };
+    }
+
+    function showConversionInfo(conversions) {
+      if (conversions.length > 0) {
+        let message = `🔄 Đã chuyển đổi ${conversions.length} cell có số 0 ở đầu:\n`;
+        conversions.forEach(conv => {
+          message += `${conv.originalCellId} → ${conv.newCellId}\n`;
+        });
+        conversionInfo.textContent = message;
+        conversionInfo.style.display = 'block';
+        
+        setTimeout(() => {
+          conversionInfo.style.display = 'none';
+        }, 8000);
+      }
+    }
+
+    window.onload = () => {
+      map = L.map("map").setView([16.047,108.206],6);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors"
+      }).addTo(map);
+      markersLayer = L.layerGroup().addTo(map);
+
+      // Load dark mode preference
+      const isDarkMode = localStorage.getItem("darkMode") === "true";
+      if (isDarkMode) {
+        document.body.classList.add("dark-mode");
+        document.getElementById("darkModeToggle").textContent = "☀️";
+      }
+
+      setupExclusiveCheckboxes();
+    };
+
+    // Dark mode toggle function
+    function toggleDarkMode() {
+      const body = document.body;
+      const darkModeToggle = document.getElementById("darkModeToggle");
+      
+      body.classList.toggle("dark-mode");
+      const isDarkMode = body.classList.contains("dark-mode");
+      
+      // Update button icon
+      darkModeToggle.textContent = isDarkMode ? "☀️" : "🌙";
+      
+      // Save preference
+      localStorage.setItem("darkMode", isDarkMode.toString());
+    }
+
+    // Click ngoài để ẩn menu
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#togglePanel') && !e.target.closest('#modeSelector')) {
+        modeSelector.classList.remove('open');
+      }
+    });
+
+   document.getElementById("togglePanel").onclick = (e) => {
+  e.stopPropagation();
+  controlPanel.classList.add("open");
+};
+
+// ===== THÊM CODE VUỐT Ở ĐÂY =====
+let startY = 0;
+
+controlPanel.addEventListener("touchstart", e => {
+  startY = e.touches[0].clientY;
+});
+
+controlPanel.addEventListener("touchmove", e => {
+  let currentY = e.touches[0].clientY;
+  let diff = currentY - startY;
+
+  // Vuốt xuống -> đóng
+  if (diff > 80) {
+    controlPanel.classList.remove("open");
+  }
+
+  // Vuốt lên -> mở
+  if (diff < -80) {
+    controlPanel.classList.add("open");
+  }
+});
+// ===== VUỐT TOÀN MÀN HÌNH ĐỂ MỞ =====
+let startYGlobal = 0;
+
+document.addEventListener("touchstart", e => {
+  startYGlobal = e.touches[0].clientY;
+});
+
+document.addEventListener("touchmove", e => {
+  let currentY = e.touches[0].clientY;
+  let diff = currentY - startYGlobal;
+
+  // Vuốt từ dưới màn hình -> mở panel
+  if (
+    startYGlobal > window.innerHeight - 150 && 
+    diff < -80 && 
+    !controlPanel.classList.contains("open")
+  ) {
+    controlPanel.classList.add("open");
+  }
+});
+
+    function goBack() {
+      controlPanel.classList.remove("open");
+      modeSelector.classList.add("open");
+     
+    }
+
+    document.getElementById("importBtn").onclick = () => {
+      fileInput.click();
+    };
+
+    fileInput.addEventListener("change", async (e) => {
+      const files = e.target.files;
+      if (!files.length) return;
+      
+      showImportStatus("Đang xử lý file...", false);
+      
+      let allNewEntries = [];
+      let processedFiles = 0;
+      let warnings = [];
+      
+      for (let file of files) {
+        try {
+          let result = await processFile(file);
+          if (currentMode === 'analyze') {
+            // Chế độ phân tích: giữ nguyên entries với datetime
+            allNewEntries = allNewEntries.concat(result.entries);
+          } else {
+            // Chế độ tra cell: chỉ lấy cellId
+            result.entries.forEach(entry => {
+              allNewEntries.push({
+                dateTime: null,
+                cellId: entry.cellId
+              });
+            });
+          }
+          if (result.warnings && result.warnings.length > 0) {
+            warnings.push(...result.warnings.map(w => `${file.name}: ${w}`));
+          }
+          processedFiles++;
+        } catch (error) {
+          console.error("Lỗi xử lý file:", file.name, error);
+          showImportStatus(`Lỗi xử lý file ${file.name}: ${error.message}`, true);
+          return;
+        }
+      }
+      
+      if (allNewEntries.length > 0) {
+        // Process cell conversion before adding to input
+        let conversions = [];
+        let processedEntries = allNewEntries.map(entry => {
+          let processedCellId = entry.cellId;
+          
+          // Use smart parsing for both short and full formats
+          const parseResult = parseSmartCellFormat(entry.cellId);
+          if (parseResult.success) {
+            processedCellId = parseResult.cellId;
+            if (parseResult.conversionApplied) {
+              conversions.push({
+                originalCellId: entry.cellId,
+                newCellId: processedCellId,
+                method: parseResult.method || 'Chuyển đổi cell ID có số 0 đầu'
+              });
+            }
+          } else {
+            // Fallback to continuous format parsing
+            const parsed = parseContinuousCellFixed(entry.cellId);
+            if (parsed.success) {
+              processedCellId = parsed.cellId;
+              if (parsed.conversionApplied) {
+                conversions.push({
+                  originalCellId: entry.cellId,
+                  newCellId: processedCellId,
+                  method: 'Kết quả 1: Chia 100000 -> Hex -> Dec'
+                });
+              }
+            }
+          }
+          
+          return {
+            dateTime: entry.dateTime,
+            cellId: processedCellId
+          };
+        });
+        
+        // Remove duplicates based on processed cell IDs
+        let uniqueEntries = removeDuplicateEntries(processedEntries);
+        
+        // Update cellInput with processed cells
+        let existingLines = cellInput.value.split("\n").map(s => s.trim()).filter(s => s.length > 0);
+        let newLines = [];
+        
+        uniqueEntries.forEach(entry => {
+          if (currentMode === 'analyze' && entry.dateTime) {
+            newLines.push(`${entry.dateTime} | ${entry.cellId}`);
+          } else {
+            newLines.push(entry.cellId);
+          }
+        });
+        
+        let combined = Array.from(new Set([...existingLines, ...newLines]));
+        cellInput.value = combined.join("\n");
+        
+        // Show conversion info if any cells were converted during import
+        if (conversions.length > 0) {
+          showConversionInfo(conversions);
+        }
+        
+        // Check for duplicates after import
+        checkDuplicates();
+        
+        let removedCount = allNewEntries.length - uniqueEntries.length;
+        let message = `Đã import thành công ${uniqueEntries.length} cell từ ${processedFiles} file(s)`;
+        if (conversions.length > 0) {
+          message += `\nĐã chuyển đổi ${conversions.length} cell có số 0 ở đầu`;
+        }
+        if (removedCount > 0) {
+          message += `\nĐã xóa ${removedCount} cell trùng lặp`;
+        }
+        if (warnings.length > 0) {
+          message += `\nCảnh báo: ${warnings.length} dòng có vấn đề được bỏ qua`;
+          showImportStatus(message, false, true);
+        } else {
+          showImportStatus(message, false);
+        }
+      } else {
+        showImportStatus("Không tìm thấy cell nào trong file(s)", true);
+      }
+      
+      fileInput.value = "";
+    });
+
+    function removeDuplicateEntries(entries) {
+      const seen = new Set();
+      const unique = [];
+      
+      entries.forEach(entry => {
+        if (!seen.has(entry.cellId)) {
+          seen.add(entry.cellId);
+          unique.push(entry);
+        }
+      });
+      
+      return unique;
+    }
+
+    async function processFile(file) {
+      const fileName = file.name.toLowerCase();
+      
+      if (fileName.endsWith('.txt')) {
+        return await processTextFile(file);
+      } else if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
+        return await processWordFile(file);
+      } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+        return await processExcelFile(file);
+      } else if (fileName.endsWith('.csv')) {
+        return await processCsvFile(file);
+      } else {
+        throw new Error(`Định dạng file không được hỗ trợ: ${file.name}`);
+      }
+    }
+
+    async function processTextFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const text = e.target.result;
+            const result = extractEntriesFromText(text);
+            resolve(result);
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.onerror = () => reject(new Error("Không thể đọc file text"));
+        reader.readAsText(file, 'UTF-8');
+      });
+    }
+
+    async function processWordFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            const arrayBuffer = e.target.result;
+            const mammothResult = await mammoth.extractRawText({arrayBuffer: arrayBuffer});
+            const text = mammothResult.value;
+            const result = extractEntriesFromText(text);
+            resolve(result);
+          } catch (error) {
+            reject(new Error("Không thể đọc file Word: " + error.message));
+          }
+        };
+        reader.onerror = () => reject(new Error("Không thể đọc file Word"));
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    async function processExcelFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            
+            let allEntries = [];
+            let warnings = [];
+            
+            workbook.SheetNames.forEach(sheetName => {
+              const worksheet = workbook.Sheets[sheetName];
+              const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+                header: 1,
+                raw: false,
+                defval: ''
+              });
+              
+              jsonData.forEach((row, rowIndex) => {
+                if (currentMode === 'analyze' && Array.isArray(row) && row.length >= 2) {
+                  // Chế độ phân tích: cột 1 = datetime, cột 2 = cell
+                  const dateTimeStr = String(row[0] || '').trim();
+                  const cellStr = String(row[1] || '').trim();
+                  
+                  if (cellStr) {
+                    const cellResult = extractCellsFromText(cellStr);
+                    if (cellResult.cells.length > 0) {
+                      cellResult.cells.forEach(cell => {
+                        allEntries.push({
+                          dateTime: dateTimeStr || null,
+                          cellId: cell
+                        });
+                      });
+                    } else if (cellResult.warnings && cellResult.warnings.length > 0) {
+                      warnings.push(...cellResult.warnings.map(w => 
+                        `Sheet "${sheetName}", dòng ${rowIndex + 1}: ${w}`
+                      ));
+                    }
+                  }
+                } else if (Array.isArray(row) && row.length >= 1) {
+                  // Chế độ tra cell hoặc chỉ có 1 cột
+                  const cellStr = String(row[0] || '').trim();
+                  
+                  if (cellStr) {
+                    const cellResult = extractCellsFromText(cellStr);
+                    if (cellResult.cells.length > 0) {
+                      cellResult.cells.forEach(cell => {
+                        allEntries.push({
+                          dateTime: null,
+                          cellId: cell
+                        });
+                      });
+                    }
+                  }
+                }
+              });
+            });
+            
+            resolve({
+              entries: allEntries,
+              warnings: warnings
+            });
+            
+          } catch (error) {
+            reject(new Error("Không thể đọc file Excel: " + error.message));
+          }
+        };
+        reader.onerror = () => reject(new Error("Không thể đọc file Excel"));
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    async function processCsvFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const text = e.target.result;
+            const result = extractEntriesFromText(text);
+            resolve(result);
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.onerror = () => reject(new Error("Không thể đọc file CSV"));
+        reader.readAsText(file, 'UTF-8');
+      });
+    }
+
+    function extractEntriesFromText(text) {
+      const entries = [];
+      const warnings = [];
+      const lines = text.split(/[\r\n]+/);
+      
+      for (let line of lines) {
+        const cleanLine = line.trim();
+        if (!cleanLine) continue;
+        
+        if (currentMode === 'analyze') {
+          // Chế độ phân tích: kiểm tra định dạng datetime | cellid
+          const dateTimeCellPattern = /^(.+?)\s*[\|\,\t]\s*(.+)$/;
+          const match = cleanLine.match(dateTimeCellPattern);
+          
+          if (match) {
+            const dateTimeStr = match[1].trim();
+            const cellStr = match[2].trim();
+            
+            const cellResult = extractCellsFromText(cellStr);
+            if (cellResult.cells.length > 0) {
+              cellResult.cells.forEach(cell => {
+                entries.push({
+                  dateTime: dateTimeStr || null,
+                  cellId: cell
+                });
+              });
+            } else {
+              warnings.push(`Không thể phân tích cell từ dòng: ${cleanLine}`);
+            }
+          } else {
+            // Không có datetime, chỉ có cell
+            const cellResult = extractCellsFromText(cleanLine);
+            if (cellResult.cells.length > 0) {
+              cellResult.cells.forEach(cell => {
+                entries.push({
+                  dateTime: null,
+                  cellId: cell
+                });
+              });
+            } else {
+              warnings.push(`Không thể phân tích cell từ dòng: ${cleanLine}`);
+            }
+          }
+        } else {
+          // Chế độ tra cell: chỉ lấy cell
+          const cellResult = extractCellsFromText(cleanLine);
+          if (cellResult.cells.length > 0) {
+            cellResult.cells.forEach(cell => {
+              entries.push({
+                dateTime: null,
+                cellId: cell
+              });
+            });
+          } else {
+            warnings.push(`Không thể phân tích cell từ dòng: ${cleanLine}`);
+          }
+        }
+      }
+      
+      return {
+        entries: entries,
+        warnings: warnings
+      };
+    }
+
+    function extractCellsFromText(text) {
+      const cells = [];
+      const warnings = [];
+      const lines = text.split(/[\r\n,;|\t]+/);
+      
+      // Enhanced patterns to support both short and full formats
+      const fullCellPattern = /\b\d{3}\.\d{1,3}\.\d{1,8}\.\d{1,15}\b/g;
+      const shortCellPattern = /\b\d{1,3}\.\d{1,8}\.\d{1,15}\b/g;
+      const continuousPattern = /\b\d{7,25}\b/g;
+      
+      for (let line of lines) {
+        const cleanLine = line.trim();
+        if (!cleanLine) continue;
+        
+        // First check for full format (mcc.mnc.lac.cellid)
+        const fullMatches = cleanLine.match(fullCellPattern);
+        if (fullMatches) {
+          fullMatches.forEach(match => {
+            const parseResult = parseSmartCellFormat(match);
+            if (parseResult.success) {
+              cells.push(parseResult.cellId);
+            } else {
+              warnings.push(`Cell ID đầy đủ không hợp lệ: ${match} - ${parseResult.reason}`);
+            }
+          });
+          continue;
+        }
+        
+        // Then check for short format (mnc.lac.cellid)
+        const shortMatches = cleanLine.match(shortCellPattern);
+        if (shortMatches) {
+          shortMatches.forEach(match => {
+            const parseResult = parseSmartCellFormat(match);
+            if (parseResult.success) {
+              cells.push(parseResult.cellId);
+            } else {
+              warnings.push(`Cell ID ngắn không hợp lệ: ${match} - ${parseResult.reason}`);
+            }
+          });
+          continue;
+        }
+        
+        // Finally check for continuous format
+        const continuousMatches = cleanLine.match(continuousPattern);
+        if (continuousMatches) {
+          continuousMatches.forEach(match => {
+            const parseResult = parseSmartCellFormat(match);
+            if (parseResult.success) {
+              cells.push(parseResult.cellId);
+            } else {
+              warnings.push(`Không thể phân tích cell liền: ${match} - ${parseResult.reason}`);
+            }
+          });
+          continue;
+        }
+        
+        if (cleanLine.length > 0 && /\d/.test(cleanLine)) {
+          warnings.push(`Dòng chứa số nhưng không khớp định dạng cell: ${cleanLine.substring(0, 50)}...`);
+        }
+      }
+      
+      const uniqueCells = Array.from(new Set(cells))
+        .filter(cell => {
+          const parts = cell.split('.');
+          return parts.length === 3 && parts.every(part => part.length > 0 && /^\d+$/.test(part));
+        });
+      
+      return {
+        cells: uniqueCells,
+        warnings: warnings
+      };
+    }
+
+    function parseContinuousCellFixed(cellString) {
+      if (cellString.length < 10) {
+        return {
+          success: false,
+          reason: `Chuỗi quá ngắn (${cellString.length} ký tự, cần tối thiểu 10)`
+        };
+      }
+      
+      if (cellString.length > 25) {
+        return {
+          success: false,
+          reason: `Chuỗi quá dài (${cellString.length} ký tự, tối đa 25)`
+        };
+      }
+      
+      // Parse according to structure: MCC(3) + MNC(2) + LAC(5) + CellID(remaining)
+      const mcc = cellString.substring(0, 3);
+      const mnc = cellString.substring(3, 5);
+      const lac = cellString.substring(5, 10);
+      const cellid = cellString.substring(10);
+      
+      if (cellid.length === 0) {
+        return {
+          success: false,
+          reason: "Không đủ ký tự cho CellID (cần ít nhất 1 ký tự sau LAC 5 ký tự)"
+        };
+      }
+      
+      if (cellid.length > 15) {
+        return {
+          success: false,
+          reason: `CellID quá dài (${cellid.length} ký tự, tối đa 15)`
+        };
+      }
+      
+      const mccNum = parseInt(mcc);
+      if (mccNum < 200 || mccNum > 999) {
+        return {
+          success: false,
+          reason: `MCC không hợp lệ: ${mcc} (phải từ 200-999)`
+        };
+      }
+      
+      // Check if cell ID needs conversion (starts with '0')
+      let finalCellId = cellid;
+      let conversionApplied = false;
+      
+      if (cellid.startsWith('0')) {
+        const conversionResult = convertCellId(cellid);
+        if (conversionResult.converted) {
+          finalCellId = conversionResult.newCellId;
+          conversionApplied = true;
+        }
+      }
+      
+      const cleanMnc = mnc.replace(/^0+/, '') || mnc.slice(-1);
+      const cleanLac = lac.replace(/^0+/, '') || lac.slice(-1);
+      const cleanCellId = finalCellId.replace(/^0+/, '') || finalCellId.slice(-1);
+      
+      return {
+        success: true,
+        cellId: `${cleanMnc}.${cleanLac}.${cleanCellId}`,
+        originalFormat: cellString,
+        parsed: {
+          mcc: mcc,
+          mnc: cleanMnc,
+          lac: cleanLac,
+          cellid: finalCellId
+        },
+        conversionApplied: conversionApplied,
+        originalCellId: conversionApplied ? cellid : null,
+        method: "Định dạng cố định: MCC(3) + MNC(2) + LAC(5) + CellID"
+      };
+    }
+
+    function showImportStatus(message, isError, isWarning = false) {
+      importStatus.textContent = message;
+      if (isError) {
+        importStatus.className = 'import-status error';
+      } else if (isWarning) {
+        importStatus.className = 'import-status warning';
+      } else {
+        importStatus.className = 'import-status success';
+      }
+      importStatus.style.display = 'block';
+      
+      setTimeout(() => {
+        importStatus.style.display = 'none';
+      }, isError || isWarning ? 10000 : 5000);
+    }
+
+    function checkDuplicates() {
+      const lines = cellInput.value.split("\n").map(s => s.trim()).filter(s => s.length > 0);
+      if (lines.length === 0) {
+        hideDuplicateSection();
+        return;
+      }
+
+      const cellCount = {};
+      const duplicates = {};
+      
+      lines.forEach(line => {
+        const cell = extractCellFromLine(line);
+        if (cell) {
+          cellCount[cell] = (cellCount[cell] || 0) + 1;
+        }
+      });
+      
+      Object.keys(cellCount).forEach(cell => {
+        if (cellCount[cell] > 1) {
+          duplicates[cell] = cellCount[cell];
+        }
+      });
+      
+      const duplicateKeys = Object.keys(duplicates);
+      
+      if (duplicateKeys.length === 0) {
+        hideDuplicateSection();
+        return;
+      }
+      
+      duplicateSection.classList.add('show');
+      duplicateCount.textContent = duplicateKeys.length;
+      
+      let duplicateHtml = '';
+      duplicateKeys.forEach(cell => {
+        duplicateHtml += `<div class="duplicate-item">${cell} <span style="color:#f44336;font-weight:bold;">(${duplicates[cell]} lần)</span></div>`;
+      });
+      
+      duplicateList.innerHTML = duplicateHtml;
+    }
+
+    function extractCellFromLine(line) {
+      if (currentMode === 'analyze') {
+        const dateTimeCellPattern = /^(.+?)\s*[\|\,\t]\s*(.+)$/;
+        const match = line.match(dateTimeCellPattern);
+        
+        if (match) {
+          return match[2].trim();
+        } else {
+          return line;
+        }
+      } else {
+        return line;
+      }
+    }
+
+    function removeDuplicates() {
+      const lines = cellInput.value.split("\n").map(s => s.trim()).filter(s => s.length > 0);
+      const seenCells = new Set();
+      const uniqueLines = [];
+      let removedCount = 0;
+      
+      lines.forEach(line => {
+        const cell = extractCellFromLine(line);
+        if (cell && !seenCells.has(cell)) {
+          seenCells.add(cell);
+          uniqueLines.push(line);
+        } else {
+          removedCount++;
+        }
+      });
+      
+      cellInput.value = uniqueLines.join("\n");
+      hideDuplicateSection();
+      
+      if (removedCount > 0) {
+        showImportStatus(`Đã xóa ${removedCount} dòng có cell trùng lặp. Còn lại ${uniqueLines.length} dòng duy nhất.`, false);
+      } else {
+        showImportStatus("Không có cell trùng lặp để xóa.", false);
+      }
+    }
+
+    function keepDuplicates() {
+      const lines = cellInput.value.split("\n").map(s => s.trim()).filter(s => s.length > 0);
+      const cellCount = {};
+      const duplicateLines = [];
+      
+      lines.forEach(line => {
+        const cell = extractCellFromLine(line);
+        if (cell) {
+          cellCount[cell] = (cellCount[cell] || 0) + 1;
+        }
+      });
+      
+      lines.forEach(line => {
+        const cell = extractCellFromLine(line);
+        if (cell && cellCount[cell] > 1) {
+          duplicateLines.push(line);
+        }
+      });
+      
+      cellInput.value = duplicateLines.join("\n");
+      hideDuplicateSection();
+      
+      if (duplicateLines.length > 0) {
+        showImportStatus(`Đã giữ lại ${duplicateLines.length} dòng có cell trùng lặp. Xóa ${lines.length - duplicateLines.length} dòng cell duy nhất.`, false);
+      } else {
+        showImportStatus("Không có cell trùng lặp để giữ lại.", false);
+      }
+    }
+
+    function hideDuplicateSection() {
+      duplicateSection.classList.remove('show');
+    }
+
+    cellInput.addEventListener('input', debounce(checkDuplicates, 500));
+    cellInput.addEventListener('paste', () => {
+      setTimeout(checkDuplicates, 100);
+    });
+
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
+    function clearResults() {
+      resultsDiv.innerHTML = "";
+      cellInput.value = "";
+      document.getElementById("latInput").value = "";
+      document.getElementById("lngInput").value = "";
+      markersLayer.clearLayers();
+      resultData = [];
+      map.setView([16.047,108.206],6);
+      importStatus.style.display = 'none';
+      conversionInfo.style.display = 'none';
+      hideDuplicateSection();
+    }
+
+    function setupExclusiveCheckboxes() {
+      const ids = ["umts","lte","nbiot","nr","auto"];
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        el.addEventListener("change", () => {
+          if (el.checked) {
+            ids.forEach(otherId => {
+              if (otherId !== id) {
+                document.getElementById(otherId).checked = false;
+              }
+            });
+          } else {
+            const anyChecked = ids.some(i => document.getElementById(i).checked);
+            if (!anyChecked) {
+              document.getElementById("auto").checked = true;
+            }
+          }
+        });
+      });
+    }
+
+    async function searchCells() {
+      sttCounter = 1;
+      resultsDiv.innerHTML = "";
+      resultData = [];
+      markersLayer.clearLayers();
+      conversionInfo.style.display = 'none';
+     
+      const apiKey = getCurrentApi();
+       
+      const raw = cellInput.value.trim();
+      if (!raw) { alert("Chưa nhập cell nào!"); return; }
+
+      const lines = raw.split("\n").map(s => s.trim()).filter(s => s.length > 0);
+      const defaultMcc = 452;
+
+      let techs = [];
+      if (document.getElementById("auto").checked) {
+        techs = ["umts","lte","nbiot","nr"];
+      } else {
+        if (document.getElementById("umts").checked) techs.push("umts");
+        if (document.getElementById("lte").checked) techs.push("lte");
+        if (document.getElementById("nbiot").checked) techs.push("nbiot");
+        if (document.getElementById("nr").checked) techs.push("nr");
+      }
+
+      let stt = 1;
+      let bounds = [];
+      let conversions = [];
+      
+      for (let line of lines) {
+        let cellDateTime = null;
+        let rawCell = line;
+        
+        if (currentMode === 'analyze') {
+          const dateTimeCellPattern = /^(.+?)\s*[\|\,\t]\s*(.+)$/;
+          const match = line.match(dateTimeCellPattern);
+          
+          if (match) {
+            cellDateTime = match[1].trim();
+            rawCell = match[2].trim();
+          }
+        }
+        
+        let mnc, lac, cid, mcc = defaultMcc;
+        let originalCellForDisplay = rawCell;
+        let processedCell = rawCell;
+        
+        // Use smart parsing for better format detection
+        const parseResult = parseSmartCellFormat(rawCell);
+        if (parseResult.success) {
+          mnc = parseResult.parsed.mnc;
+          lac = parseResult.parsed.lac;
+          cid = parseResult.parsed.cellid;
+          mcc = parseResult.parsed.mcc;
+          processedCell = parseResult.cellId;
+          
+          if (parseResult.conversionApplied) {
+            conversions.push({
+              originalCellId: parseResult.originalCellId,
+              newCellId: parseResult.parsed.cellid,
+              method: parseResult.method || 'Chuyển đổi cell ID có số 0 đầu'
+            });
+          }
+        } else {
+          // Fallback to continuous format parsing
+          const parsed = parseContinuousCellFixed(rawCell);
+          if (parsed.success) {
+            [mnc, lac, cid] = parsed.cellId.split(".");
+            mcc = parsed.parsed.mcc;
+            processedCell = parsed.cellId;
+            
+            if (parsed.conversionApplied) {
+              conversions.push({
+                originalCellId: parsed.originalCellId,
+                newCellId: parsed.parsed.cellid,
+                method: 'Kết quả 1: Chia 100000 -> Hex -> Dec'
+              });
+            }
+          } else {
+            console.warn(`Không thể parse cell: ${rawCell} - ${parsed.reason}`);
+            continue;
+          }
+        }
+
+        let foundForCell = false;
+        for (let tech of techs) {
+          let payload = {
+            token: apiKey,
+            radio: tech.toUpperCase(),
+            mcc: parseInt(mcc),
+            mnc: parseInt(mnc),
+            cells: [{ lac: parseInt(lac), cid: parseInt(cid) }],
+            address: 1
+          };
+          try {
+            let res = await fetch("https://us1.unwiredlabs.com/v2/process.php", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload)
+            });
+            let data = await res.json();
+
+if (!data || data.status !== "ok" || typeof data.lat !== "number") {
+  console.log("API không có dữ liệu");
+  continue; // chỉ thử tech khác, KHÔNG đổi API
+}
+
+// ✅ Có dữ liệu -> dùng luôn API này
+              let now = new Date().toLocaleString();
+              const displayDateTime = cellDateTime || now;
+              
+              const txtLine = `Cell gốc: ${originalCellForDisplay}\nCell tra cứu: ${processedCell}\nNgày giờ: ${displayDateTime}\nĐịa chỉ: ${data.address || '-'}\nVĩ/Kinh: ${data.lat}, ${data.lon}\nMạng: ${tech.toUpperCase()}\nKhoảng cách: ${data.accuracy} m\nMCC.MNC.LAC.CID: ${mcc}.${mnc}.${lac}.${cid}`;
+
+              const item = document.createElement("div");
+              item.className = "result-item";
+              item.onclick = () => {
+  map.setView([data.lat, data.lon], 17);
+
+  L.popup()
+    .setLatLng([data.lat, data.lon])
+    .setContent(`
+      <b>Cell đã chọn</b><br>
+      ${txtLine.replace(/\n/g, "<br>")}
+    `)
+    .openOn(map);
+};
+              const textDiv = document.createElement("div");
+              textDiv.className = "result-text";
+              const apiUsed = currentApiIndex + 1;
+textDiv.innerHTML = `<b>${stt} (API: ${apiUsed})</b><br>${txtLine.replace(/\n/g, "<br>")}`;
+              const actionsDiv = document.createElement("div");
+              actionsDiv.className = "result-actions";
+              const gLink = document.createElement("a");
+              gLink.className = "g-button";
+              gLink.target = "_blank";
+              gLink.href = `https://www.google.com/maps?q=${data.lat},${data.lon}`;
+              gLink.innerHTML = "G";
+              actionsDiv.appendChild(gLink);
+              item.appendChild(textDiv);
+              item.appendChild(actionsDiv);
+              resultsDiv.appendChild(item);
+
+              L.marker([data.lat, data.lon], {
+              }).addTo(markersLayer).bindPopup(`
+  <b>Thông tin Cell</b><br>
+  ${txtLine.replace(/\n/g, "<br>")}<br><br>
+
+  <b>Mở Google Map:</b><br>
+  <a href="https://www.google.com/maps?q=${data.lat},${data.lon}" 
+     target="_blank"
+     style="color:#2196F3;font-weight:bold;text-decoration:none;">
+     ${data.lat}, ${data.lon}
+  </a>
+`);  icon: L.divIcon({ className: "custom-icon", html: `<b>${stt}</b>`, iconSize:[28,28] })
+              
+              const radius = (data.accuracy && typeof data.accuracy === "number") ? data.accuracy : 300;
+              L.circle([data.lat, data.lon], { radius: radius, color: "red", fillOpacity: 0.12 }).addTo(markersLayer);
+
+              resultData.push({
+                STT: stt,
+                NgàyGiờGốc: cellDateTime || '',
+                NgàyGiờTraCứu: now,
+                CellGốc: originalCellForDisplay,
+                CellTraCứu: processedCell,
+                Mạng: tech.toUpperCase(),
+                Lat: data.lat,
+                Lon: data.lon,
+                KhoảngCách: data.accuracy || radius,
+                ĐịaChỉ: data.address || '',
+                GoogleMaps: `https://www.google.com/maps?q=${data.lat},${data.lon}`,
+                MCC_MNC_LAC_CID: `${mcc}.${mnc}.${lac}.${cid}`
+              });
+              lastCellLat = data.lat;
+               lastCellLng = data.lon;
+              bounds.push([data.lat, data.lon]);
+              stt++;
+              foundForCell = true;
+              break;
+            }
+  catch (err) {
+  console.log("API lỗi");
+  continue;
+}
+        }
+
+        if (!foundForCell) {
+  // ❗ CHỈ ĐỔI API KHI KHÔNG TÌM ĐƯỢC
+  switchToNextApi();
+          const displayDateTime = cellDateTime || new Date().toLocaleString();
+          const notFound = document.createElement("div");
+          notFound.className = "result-item";
+          notFound.innerHTML = `<div class="result-text">STT: ${stt} (không tìm thấy)\nCell gốc: ${originalCellForDisplay}\nCell tra cứu: ${processedCell}\nNgày giờ: ${displayDateTime}\nGhi chú: Không có kết quả hợp lệ cho cell này.</div>`;
+          resultsDiv.appendChild(notFound);
+          resultData.push({
+            STT:stt,
+            NgàyGiờGốc: cellDateTime || '',
+            CellGốc: originalCellForDisplay,
+            CellTraCứu: processedCell,
+            NgàyGiờTraCứu: new Date().toLocaleString(),
+            Mạng: '-',
+            Lat: '',
+            Lon: '',
+            KhoảngCách: '',
+            ĐịaChỉ: 'Không tìm thấy',
+            GoogleMaps: '',
+            MCC_MNC_LAC_CID: ''
+          });
+          stt++;
+        }
+      }
+
+      // Show conversion info if any cells were converted
+      if (conversions.length > 0) {
+        showConversionInfo(conversions);
+      }
+
+      if (bounds.length === 1) {
+        map.setView(bounds[0], 16);
+      } else if (bounds.length > 1) {
+        map.fitBounds(bounds, { padding: [40,40] });
+        
+      }
+      // ===== LƯU LỊCH SỬ =====
+if (resultData.length > 0) {
+  historyData.unshift({
+    time: new Date().toLocaleString(),
+    data: resultData
+  });
+
+  // Giữ tối đa 20 lần tra
+  if (historyData.length > 20) {
+    historyData = historyData.slice(0, 20);
+  }
+
+  localStorage.setItem("cellHistory", JSON.stringify(historyData));
+}
+    }
+
+    function exportExcel() {
+      if (!resultData || resultData.length === 0) {
+        alert("Không có dữ liệu để xuất!");
+        return;
+      }
+      
+      const wb = XLSX.utils.book_new();
+      
+      let headers = [];
+      if (currentMode === 'analyze') {
+        headers = [
+          "STT",
+          "Ngày giờ gốc", 
+          "Cell gốc",
+          "Cell tra cứu",
+          "Ngày giờ tra cứu",
+          "Mạng",
+          "Lat",
+          "Lon", 
+          "Khoảng cách",
+          "Địa chỉ",
+          "MCC_MNC_LAC_CID",
+          "Google Maps"
+        ];
+      } else {
+        headers = [
+          "STT",
+          "Cell gốc",
+          "Cell tra cứu",
+          "Ngày giờ tra cứu",
+          "Mạng",
+          "Lat",
+          "Lon", 
+          "Khoảng cách",
+          "Địa chỉ",
+          "MCC_MNC_LAC_CID",
+          "Google Maps"
+        ];
+      }
+      
+      const wsData = [headers];
+      resultData.forEach(row => {
+        if (currentMode === 'analyze') {
+          wsData.push([
+            row.STT || "",
+            row.NgàyGiờGốc || "",
+            row.CellGốc || "",
+            row.CellTraCứu || "",
+            row.NgàyGiờTraCứu || "",
+            row.Mạng || "",
+            row.Lat || "",
+            row.Lon || "",
+            row.KhoảngCách || "",
+            row.ĐịaChỉ || "",
+            row.MCC_MNC_LAC_CID || "",
+            row.GoogleMaps || ""
+          ]);
+        } else {
+          wsData.push([
+            row.STT || "",
+            row.CellGốc || "",
+            row.CellTraCứu || "",
+            row.NgàyGiờTraCứu || "",
+            row.Mạng || "",
+            row.Lat || "",
+            row.Lon || "",
+            row.KhoảngCách || "",
+            row.ĐịaChỉ || "",
+            row.MCC_MNC_LAC_CID || "",
+            row.GoogleMaps || ""
+          ]);
+        }
+      });
+      
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      
+      const colWidths = [];
+      wsData[0].forEach((header, i) => {
+        let maxWidth = header.length;
+        wsData.slice(1).forEach(row => {
+          const cellValue = String(row[i] || "");
+          maxWidth = Math.max(maxWidth, cellValue.length);
+        });
+        colWidths.push({ width: Math.min(maxWidth + 2, 50) });
+      });
+      ws['!cols'] = colWidths;
+      
+      XLSX.utils.book_append_sheet(wb, ws, "Cell Results");
+      
+      const now = new Date();
+      const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
+      const modePrefix = currentMode === 'analyze' ? 'analyzed' : 'lookup';
+      const filename = `cell_${modePrefix}_${timestamp}.xlsx`;
+      
+      XLSX.writeFile(wb, filename);
+  ///them chuc nang
+      function openLocation() {
+  const lat = document.getElementById("latInput").value.trim();
+  const lng = document.getElementById("lngInput").value.trim();
+
+  if (!lat || !lng) {
+    alert("Vui lòng nhập đầy đủ Lat và Long");
+    return;
+  }
+
+  // Ghim lên bản đồ local
+  L.marker([lat, lng]).addTo(markersLayer)
+    .bindPopup("Vị trí nhập tay: " + lat + ", " + lng)
+    .openPopup();
+
+  map.setView([lat, lng], 16);
+   } 
+  }
+async function lookupAndLocation() {
+  await searchCells(); // tra cell trước
+
+  const lat = document.getElementById("latInput").value.trim();
+  const lng = document.getElementById("lngInput").value.trim();
+
+  if (lat && lng) {
+    L.marker([lat, lng]).addTo(markersLayer)
+      .bindPopup("Vị trí nhập tay: " + lat + ", " + lng)
+      .openPopup();
+  }
+}
+    ///mo
+function openBothOnGoogle() {
+  const lat = document.getElementById("latInput").value.trim();
+  const lng = document.getElementById("lngInput").value.trim();
+
+  if (!lastCellLat || !lastCellLng) {
+    alert("Chưa có kết quả tra cell");
+    return;
+  }
+
+  if (!lat || !lng) {
+    alert("Chưa nhập Lat Long");
+    return;
+  }
+
+  const url = `https://www.google.com/maps/dir/${lastCellLat},${lastCellLng}/${lat},${lng}`;
+  window.open(url, "_blank");
+}
+function openLocation() {
+  const lat = document.getElementById("latInput").value.trim();
+  const lng = document.getElementById("lngInput").value.trim();
+
+  if (!lat || !lng) {
+    alert("Vui lòng nhập đầy đủ Lat và Long");
+    return;
+  }
+
+  const marker = L.marker([parseFloat(lat), parseFloat(lng)])
+    .addTo(markersLayer)
+    .bindPopup(`
+      <b>Vị trí nhập tay</b><br>
+      <a href="https://www.google.com/maps?q=${lat},${lng}" 
+         target="_blank" 
+         style="color:#2196F3;font-weight:bold;text-decoration:none;">
+         ${lat}, ${lng}
+      </a>
+    `)
+    .openPopup();
+
+  map.setView([lat, lng], 16);
+}
+
+async function lookupAndLocation() {
+  await searchCells();
+
+  const lat = document.getElementById("latInput").value.trim();
+  const lng = document.getElementById("lngInput").value.trim();
+
+  if (lat && lng) {
+    const marker = L.marker([parseFloat(lat), parseFloat(lng)])
+      .addTo(markersLayer)
+      .bindPopup(`
+        <b>Vị trí nhập tay</b><br>
+        <a href="https://www.google.com/maps?q=${lat},${lng}" 
+           target="_blank"
+           style="color:#2196F3;font-weight:bold;text-decoration:none;">
+           ${lat}, ${lng}
+        </a>
+      `);
+
+    map.setView([lat, lng], 16);
+  }
+}
+function openBothOnGoogle() {
+  const lat2 = document.getElementById("latInput").value.trim();
+  const lng2 = document.getElementById("lngInput").value.trim();
+
+  if (!lastCellLat || !lastCellLng) {
+    alert("Chưa có vị trí cell tra cứu!");
+    return;
+  }
+
+  if (!lat2 || !lng2) {
+    alert("Chưa nhập Lat, Long thứ hai!");
+    return;
+  }
+
+  // Tạo link hiển thị 2 marker cùng lúc
+  const url = `https://www.google.com/maps/dir/${lastCellLat},${lastCellLng}/${lat2},${lng2}`;
+
+  window.open(url, "_blank");
+}
+function showHistory() {
+  if (!historyData || historyData.length === 0) {
+    alert("Chưa có lịch sử!");
+    return;
+  }
+
+  resultsDiv.innerHTML = "";
+  markersLayer.clearLayers(); // xóa marker cũ
+
+  let sttGlobal = 1;
+  let bounds = [];
+
+  historyData.forEach((item, index) => {
+    const title = document.createElement("div");
+    title.style.fontWeight = "bold";
+    title.style.marginTop = "10px";
+    title.textContent = `🔹 Lần tra ${index + 1} - ${item.time}`;
+    resultsDiv.appendChild(title);
+
+    item.data.forEach(row => {
+
+      const txtLine = `Cell gốc: ${row.CellGốc}
+Cell tra cứu: ${row.CellTraCứu}
+Ngày giờ: ${row.NgàyGiờTraCứu}
+Địa chỉ: ${row.ĐịaChỉ}
+Vĩ/Kinh: ${row.Lat}, ${row.Lon}
+Mạng: ${row.Mạng}
+Khoảng cách: ${row.KhoảngCách} m
+MCC.MNC.LAC.CID: ${row.MCC_MNC_LAC_CID}`;
+
+      // ===== TẠO ITEM GIỐNG TRA CELL =====
+      const itemDiv = document.createElement("div");
+      itemDiv.className = "result-item";
+
+      const textDiv = document.createElement("div");
+      textDiv.className = "result-text";
+      textDiv.textContent = `STT: ${sttGlobal}\n${txtLine}`;
+
+      // ===== NÚT GOOGLE =====
+      const actionsDiv = document.createElement("div");
+      actionsDiv.className = "result-actions";
+
+      const gLink = document.createElement("a");
+      gLink.className = "g-button";
+      gLink.target = "_blank";
+      gLink.href = `https://www.google.com/maps?q=${row.Lat},${row.Lon}`;
+      gLink.innerHTML = "G";
+
+      actionsDiv.appendChild(gLink);
+
+      itemDiv.appendChild(textDiv);
+      itemDiv.appendChild(actionsDiv);
+
+      // ===== CLICK VÀO → HIỆN MAP =====
+      itemDiv.onclick = () => {
+        if (!row.Lat || !row.Lon) return;
+
+        markersLayer.clearLayers();
+
+        const marker = L.marker([row.Lat, row.Lon]).addTo(markersLayer)
+          .bindPopup(`
+            <b>Thông tin Cell</b><br>
+            ${txtLine.replace(/\n/g, "<br>")}<br><br>
+            <a href="https://www.google.com/maps?q=${row.Lat},${row.Lon}" 
+               target="_blank"
+               style="color:#2196F3;font-weight:bold;text-decoration:none;">
+               Mở Google Map
+            </a>
+          `)
+          .openPopup();
+
+        L.circle([row.Lat, row.Lon], {
+          radius: row.KhoảngCách || 300,
+          color: "red",
+          fillOpacity: 0.12
+        }).addTo(markersLayer);
+
+        map.setView([row.Lat, row.Lon], 16);
+      };
+
+      resultsDiv.appendChild(itemDiv);
+
+      // ===== TỰ HIỆN MARKER LUÔN =====
+      if (row.Lat && row.Lon) {
+        L.marker([row.Lat, row.Lon]).addTo(markersLayer);
+        bounds.push([row.Lat, row.Lon]);
+      }
+
+      sttGlobal++;
+    });
+  });
+
+  // zoom map theo tất cả điểm
+  if (bounds.length === 1) {
+    map.setView(bounds[0], 16);
+  } else if (bounds.length > 1) {
+    map.fitBounds(bounds, { padding: [40,40] });
+  }
+}
+// ===== XÓA LỊCH SỬ =====
+function clearHistory() {
+  if (confirm("Bạn có chắc muốn xóa toàn bộ lịch sử?")) {
+    localStorage.removeItem("cellHistory");
+    historyData = [];
+    resultsDiv.innerHTML = "";
+    alert("Đã xóa lịch sử!");
+  }
+}
+  
+  </script>
+</body>
+</html>

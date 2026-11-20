@@ -1,0 +1,44 @@
+name: Tai ve (Web)
+
+# Tự động: mỗi lần sửa file, gói ứng dụng web thành file tải về với link cố định:
+#   https://github.com/OWNER/REPO/releases/download/tai-ve/<TEN_FILE>
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tai-ve
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gói file
+        run: |
+          REPO="${GITHUB_REPOSITORY#*/}"
+          mkdir -p out
+          git ls-files | grep -v '^\.github/' | zip -q9 "out/$REPO-Web.zip" -@
+          # Ứng dụng chỉ gồm 1 file HTML: cho tải thẳng file .html
+          if [ -f index.html ] && ! git ls-files | grep -vE '^(\.github/|sw\.js$)' | grep -qE '\.js$'; then
+            cp index.html "out/$REPO.html"
+          fi
+          ls -la out
+      - name: Cập nhật bản phát hành "tai-ve"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          R="$GITHUB_REPOSITORY"
+          NOTES="Bản mới nhất (commit ${GITHUB_SHA:0:7}, $(TZ=Asia/Ho_Chi_Minh date '+%d/%m/%Y %H:%M')). Link cố định: https://github.com/$R/releases/download/tai-ve/<TEN_FILE>"
+          if gh release view tai-ve -R "$R" >/dev/null 2>&1; then
+            gh release edit tai-ve -R "$R" --notes "$NOTES"
+          else
+            gh release create tai-ve -R "$R" --title "Tải về – bản mới nhất" --notes "$NOTES" --target "$GITHUB_SHA" --latest
+          fi
+          gh release upload tai-ve out/* -R "$R" --clobber
+          git tag -f tai-ve && git push -qf origin refs/tags/tai-ve || true
